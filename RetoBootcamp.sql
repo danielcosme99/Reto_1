@@ -138,3 +138,110 @@ INSERT INTO Distrito (idProvincia, descDistrito) VALUES (10, 'AYAUCA');
 INSERT INTO Distrito (idProvincia, descDistrito) VALUES (10, 'HUANCAYA');
 INSERT INTO Distrito (idProvincia, descDistrito) VALUES (10, 'TANTA');
 
+--Creacion de procedures y funciones
+--Funcion para verificar existencia de un registro
+CREATE OR REPLACE FUNCTION REGISTRO_EXISTE_ID(
+    p_tabla      IN VARCHAR2,  -- Nombre de la tabla
+    p_campo      IN VARCHAR2,  -- Nombre del campo ID
+    p_id         IN NUMBER     -- ID a verificar
+) RETURN NUMBER IS
+    v_count NUMBER;
+    v_sql   VARCHAR2(2000);
+BEGIN
+    -- Consulta dinámica
+    v_sql := 'SELECT COUNT(*) FROM ' || p_tabla || ' WHERE ' || p_campo || ' = :1';
+    
+    -- Ejecutar la consulta
+    EXECUTE IMMEDIATE v_sql INTO v_count USING p_id;
+
+    -- Devolvera 1 si existe, 0 si no existe
+    RETURN v_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN -1;  -- Error inesperado
+END REGISTRO_EXISTE_ID;
+---Procedure para insertar
+create or replace PROCEDURE SP_HOSPITAL_REGISTRAR (
+    p_idHospital  IN HOSPITAL.IDHOSPITAL%TYPE,
+    p_idDistrito  IN HOSPITAL.IDDISTRITO%TYPE,
+    p_nombre      IN HOSPITAL.NOMBRE%TYPE,
+    p_antiguedad  IN HOSPITAL.ANTIGUEDAD%TYPE,
+    p_area        IN HOSPITAL.AREA%TYPE,
+    p_idSede      IN HOSPITAL.IDSEDE%TYPE,
+    p_idGerente   IN HOSPITAL.IDGERENTE%TYPE,
+    p_idCondicion IN HOSPITAL.IDCONDICION%TYPE
+) IS
+    falta_parametros EXCEPTION;
+    hospital_existe EXCEPTION;
+    validacion EXCEPTION;
+    v_errores VARCHAR2(500) := '';
+    
+BEGIN
+    IF p_idHospital IS NULL OR p_idDistrito IS NULL OR p_nombre IS NULL OR
+       p_antiguedad IS NULL OR p_area IS NULL OR p_idSede IS NULL OR
+       p_idGerente IS NULL OR p_idCondicion IS NULL THEN
+        RAISE falta_parametros;
+    END IF;
+
+        IF REGISTRO_EXISTE_ID('HOSPITAL', 'IDHOSPITAL', p_idHospital) = 1 THEN
+            RAISE hospital_existe;
+        ELSE
+            -- Verificar la existencia de los valores referenciados
+            IF REGISTRO_EXISTE_ID('DISTRITO', 'IDDISTRITO', p_idDistrito) = 0 THEN
+                v_errores := v_errores || 'Error: El distrito con ID ' || p_idDistrito || ' no existe.' || CHR(10);
+            END IF;
+        
+            IF REGISTRO_EXISTE_ID('SEDE', 'IDSEDE', p_idSede) = 0 THEN
+                v_errores := v_errores || 'Error: La sede con ID ' || p_idSede || ' no existe.' || CHR(10);
+            END IF;
+        
+            IF REGISTRO_EXISTE_ID('GERENTE', 'IDGERENTE', p_idGerente) = 0 THEN
+                v_errores := v_errores || 'Error: El gerente con ID ' || p_idGerente || ' no existe.' || CHR(10);
+            END IF;
+        
+            IF REGISTRO_EXISTE_ID('CONDICION', 'IDCONDICION', p_idCondicion) = 0 THEN
+                v_errores := v_errores || 'Error: La condición con ID ' || p_idCondicion || ' no existe.' || CHR(10);
+            END IF;
+            
+            IF v_errores IS NOT NULL THEN
+                RAISE validacion;
+            END IF;
+
+        -- Si todos los valores existen, insertar el nuevo registro
+        INSERT INTO HOSPITAL (
+            IDHOSPITAL, 
+            IDDISTRITO, 
+            NOMBRE, 
+            ANTIGUEDAD, 
+            AREA, 
+            IDSEDE, 
+            IDGERENTE, 
+            IDCONDICION, 
+            FECHAREGISTRO
+        ) VALUES (
+            p_idHospital, 
+            p_idDistrito, 
+            p_nombre, 
+            p_antiguedad, 
+            p_area, 
+            p_idSede, 
+            p_idGerente, 
+            p_idCondicion, 
+            CURRENT_DATE
+        );
+        DBMS_OUTPUT.PUT_LINE('Hospital registrado exitosamente.');
+
+    END IF;
+EXCEPTION
+    WHEN falta_parametros THEN
+        DBMS_OUTPUT.PUT_LINE('Faltan uno o más parametros de entrada');
+    -- Si el hospital ya existe
+    WHEN hospital_existe THEN
+        DBMS_OUTPUT.PUT_LINE('El hospital con ID ' || p_idHospital || ' ya existe.');
+    WHEN validacion THEN
+        DBMS_OUTPUT.PUT_LINE(v_errores);
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Ocurrió un error, por favor intente nuevamente.');
+END SP_HOSPITAL_REGISTRAR;
+
+
