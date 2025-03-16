@@ -165,7 +165,7 @@ EXCEPTION
     WHEN OTHERS THEN
         RETURN -1;  -- Error inesperado
 END REGISTRO_EXISTE_ID;
----Procedure para insertar
+--PROCEDURE PARA REGISTRAR UN NUEVO HOSPITAL
 create or replace PROCEDURE SP_HOSPITAL_REGISTRAR (
     p_idHospital  IN HOSPITAL.IDHOSPITAL%TYPE,
     p_idDistrito  IN HOSPITAL.IDDISTRITO%TYPE,
@@ -238,7 +238,7 @@ BEGIN
         ) VALUES (
             p_idHospital, 
             p_idDistrito, 
-            p_nombre, 
+            TRIM(p_nombre), 
             p_antiguedad, 
             p_area, 
             p_idSede, 
@@ -246,7 +246,7 @@ BEGIN
             p_idCondicion, 
             CURRENT_DATE
         );
-        DBMS_OUTPUT.PUT_LINE('Hospital registrado exitosamente.');
+        DBMS_OUTPUT.PUT_LINE('✅ Hospital registrado exitosamente.');
 
 EXCEPTION
     WHEN falta_parametros THEN
@@ -260,7 +260,101 @@ EXCEPTION
     WHEN validacion THEN
         DBMS_OUTPUT.PUT_LINE(v_errores);
     WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Ocurrió un error, por favor intente nuevamente.');
+        DBMS_OUTPUT.PUT_LINE('Error al registrar el hospital, por favor intente nuevamente.');
 END SP_HOSPITAL_REGISTRAR;
+
+--PROCEDURE PARA ACTUALIZAR DATOS DE UN HOSPITAL EXISTENTE
+CREATE OR REPLACE PROCEDURE SP_HOSPITAL_ACTUALIZAR (
+    p_idHospital  IN HOSPITAL.IDHOSPITAL%TYPE,
+    p_idDistrito  IN HOSPITAL.IDDISTRITO%TYPE,
+    p_nombre      IN HOSPITAL.NOMBRE%TYPE,
+    p_antiguedad  IN HOSPITAL.ANTIGUEDAD%TYPE,
+    p_area        IN HOSPITAL.AREA%TYPE,
+    p_idSede      IN HOSPITAL.IDSEDE%TYPE,
+    p_idGerente   IN HOSPITAL.IDGERENTE%TYPE,
+    p_idCondicion IN HOSPITAL.IDCONDICION%TYPE
+) IS
+    falta_parametros EXCEPTION;
+    hospital_existe EXCEPTION;
+    nombre_invalido EXCEPTION;
+    valor_negativo EXCEPTION;
+    validacion EXCEPTION;
+    v_errores VARCHAR2(500) := '';
+    verificar_actualizacion EXCEPTION;
+
+BEGIN
+    IF p_idHospital IS NULL OR p_idDistrito IS NULL OR p_nombre IS NULL OR
+        p_antiguedad IS NULL OR p_area IS NULL OR p_idSede IS NULL OR
+        p_idGerente IS NULL OR p_idCondicion IS NULL THEN
+        RAISE falta_parametros;
+    END IF;
+    -- Verificar si el hospital existe
+    IF REGISTRO_EXISTE_ID('HOSPITAL', 'IDHOSPITAL', p_idHospital) = 0 THEN
+        RAISE hospital_existe;
+    END IF;
+    -- Validar que el nombre del hospital no sea espacios en blanco
+    IF TRIM(p_nombre) IS NULL THEN
+        RAISE nombre_invalido;
+    END IF;
+    -- Validar que antigüedad y área sean valores positivos
+    IF p_antiguedad < 0 OR p_area <= 0 THEN
+        RAISE valor_negativo;
+    END IF;
+    -- Validar existencia de claves foráneas antes de actualizar
+    IF REGISTRO_EXISTE_ID('DISTRITO', 'IDDISTRITO', p_idDistrito) = 0 THEN
+        v_errores := v_errores || 'Error: El distrito con ID ' || p_idDistrito || ' no existe. ' || CHR(10);
+    END IF;
+
+    IF REGISTRO_EXISTE_ID('SEDE', 'IDSEDE', p_idSede) = 0 THEN
+        v_errores := v_errores || 'Error: La sede con ID ' || p_idSede || ' no existe. ' || CHR(10);
+    END IF;
+
+    IF REGISTRO_EXISTE_ID('GERENTE', 'IDGERENTE', p_idGerente) = 0 THEN
+        v_errores := v_errores || 'Error: El gerente con ID ' || p_idGerente || ' no existe. ' || CHR(10);
+    END IF;
+
+    IF REGISTRO_EXISTE_ID('CONDICION', 'IDCONDICION', p_idCondicion) = 0 THEN
+        v_errores := v_errores || 'Error: La condición con ID ' || p_idCondicion || ' no existe. ' || CHR(10);
+    END IF;
+
+    -- Si hay errores, lanzar excepción
+    IF v_errores IS NOT NULL THEN
+        RAISE validacion;
+    END IF;
+
+    -- Actualizar los datos del hospital
+    UPDATE HOSPITAL
+    SET IDDISTRITO = p_idDistrito,
+        NOMBRE = TRIM(p_nombre), 
+        ANTIGUEDAD = p_antiguedad,
+        AREA = p_area,
+        IDSEDE = p_idSede,
+        IDGERENTE = p_idGerente,
+        IDCONDICION = p_idCondicion
+    WHERE IDHOSPITAL = p_idHospital;
+
+    -- Verificar si no se afectó alguna fila
+    IF SQL%ROWCOUNT = 0 THEN
+        RAISE verificar_actualizacion;
+    END IF;
+
+    DBMS_OUTPUT.PUT_LINE('✅ Datos del Hospital actualizados exitosamente.');
+
+EXCEPTION
+    WHEN falta_parametros THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Faltan uno o más parametros de entrada');
+    WHEN hospital_existe THEN
+        DBMS_OUTPUT.PUT_LINE('Error: El hospital con ID ' || p_idHospital || ' no existe en la Base de Datos.');
+    WHEN nombre_invalido THEN
+        DBMS_OUTPUT.PUT_LINE('Error: El nombre del hospital no puede estar vacío.');
+    WHEN valor_negativo THEN
+        DBMS_OUTPUT.PUT_LINE('Error: La antigüedad y el área deben ser valores positivos.');
+    WHEN validacion THEN
+        DBMS_OUTPUT.PUT_LINE(v_errores);
+    WHEN verificar_actualizacion THEN
+        DBMS_OUTPUT.PUT_LINE('Error: No se actualizaron los datos del hospital. Vuelva a intentar.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error al actualizar datos del hospital, por favor intente nuevamente.');
+END SP_HOSPITAL_ACTUALIZAR;
 
 
