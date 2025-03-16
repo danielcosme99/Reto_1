@@ -144,6 +144,13 @@ INSERT INTO Distrito (idProvincia, descDistrito) VALUES (10, 'HUANCAYA');
 INSERT INTO Distrito (idProvincia, descDistrito) VALUES (10, 'TANTA');
 
 --Creacion de procedures y funciones
+-- Funcion para generar lineas
+CREATE OR REPLACE FUNCTION GENERAR_LINEA(p_longitud NUMBER) RETURN VARCHAR2 IS
+    v_linea VARCHAR2(4000); 
+BEGIN
+    v_linea := RPAD('-', p_longitud, '-');
+    RETURN v_linea;
+END GENERAR_LINEA;
 --Funcion para verificar existencia de un registro
 CREATE OR REPLACE FUNCTION REGISTRO_EXISTE_ID(
     p_tabla      IN VARCHAR2,  -- Nombre de la tabla
@@ -165,6 +172,8 @@ EXCEPTION
     WHEN OTHERS THEN
         RETURN -1;  -- Error inesperado
 END REGISTRO_EXISTE_ID;
+
+
 --PROCEDURE PARA REGISTRAR UN NUEVO HOSPITAL
 create or replace PROCEDURE SP_HOSPITAL_REGISTRAR (
     p_idHospital  IN HOSPITAL.IDHOSPITAL%TYPE,
@@ -184,6 +193,8 @@ create or replace PROCEDURE SP_HOSPITAL_REGISTRAR (
     v_errores VARCHAR2(500) := '';
     
 BEGIN
+        -- Habilitar salida en consola
+        DBMS_OUTPUT.ENABLE;
         -- Validar que los parametros no sean nulos
         IF p_idHospital IS NULL OR p_idDistrito IS NULL OR p_nombre IS NULL OR
            p_antiguedad IS NULL OR p_area IS NULL OR p_idSede IS NULL OR
@@ -283,6 +294,9 @@ CREATE OR REPLACE PROCEDURE SP_HOSPITAL_ACTUALIZAR (
     verificar_actualizacion EXCEPTION;
 
 BEGIN
+    -- Habilitar salida en consola
+    DBMS_OUTPUT.ENABLE;
+    -- Validar que los parametros no sean nulos
     IF p_idHospital IS NULL OR p_idDistrito IS NULL OR p_nombre IS NULL OR
         p_antiguedad IS NULL OR p_area IS NULL OR p_idSede IS NULL OR
         p_idGerente IS NULL OR p_idCondicion IS NULL THEN
@@ -365,6 +379,8 @@ CREATE OR REPLACE PROCEDURE SP_HOSPITAL_ELIMINAR (
     hospital_existe EXCEPTION;
     verificar_eliminacion EXCEPTION;
 BEGIN
+    -- Habilitar salida en consola
+    DBMS_OUTPUT.ENABLE;
     -- Validar que el ID del hospital no sea NULL
     IF p_idHospital IS NULL THEN
         RAISE id_null;
@@ -396,5 +412,103 @@ EXCEPTION
     WHEN OTHERS THEN
         DBMS_OUTPUT.PUT_LINE('Error inesperado al eliminar el hospital: ' || SQLERRM);
 END SP_HOSPITAL_ELIMINAR;
+
+
+--PROCEDURE PARA LISTAR LOS REGISTROS DE LA TABLA HOSPITAL
+CREATE OR REPLACE PROCEDURE SP_HOSPITAL_LISTAR(p_formato NUMBER) IS
+    -- CURSOR
+    CURSOR c_hospital IS 
+        SELECT 
+            h.IDHOSPITAL, 
+            h.NOMBRE, 
+            h.ANTIGUEDAD, 
+            h.AREA, 
+            d.DESCDISTRITO AS DISTRITO, 
+            s.DESCSede AS SEDE, 
+            g.DESCGerente AS GERENTE, 
+            c.DESCCONDICION AS CONDICION, 
+            h.FECHAREGISTRO
+        FROM HOSPITAL h
+        JOIN DISTRITO d ON h.IDDISTRITO = d.IDDISTRITO
+        JOIN SEDE s ON h.IDSEDE = s.IDSEDE
+        JOIN GERENTE g ON h.IDGERENTE = g.IDGERENTE
+        JOIN CONDICION c ON h.IDCONDICION = c.IDCONDICION;
+
+    -- Variable de registro de datos del cursor
+    v_hospital c_hospital%ROWTYPE;
+    -- Contador para numerar los registros
+    v_contador NUMBER := 0;
+
+BEGIN
+    -- Habilitar salida en consola
+    DBMS_OUTPUT.ENABLE;
+
+    -- Abrir cursor
+    OPEN c_hospital;
+    
+    IF p_formato = 2 THEN
+    DBMS_OUTPUT.PUT_LINE('| ' || RPAD('ID', 4) || ' | ' || RPAD('Nombre', 25) || ' | ' ||
+                                RPAD('Antigüedad', 10) || ' | ' || RPAD('Área', 8) || ' | ' ||
+                                RPAD('Distrito', 25) || ' | ' || RPAD('Sede', 20) || ' | ' ||
+                                RPAD('Gerente', 25) || ' | ' || RPAD('Condición', 20) || ' | ' ||
+                                RPAD('Fecha Reg.', 12) || ' |');
+                                
+    DBMS_OUTPUT.PUT_LINE(GENERAR_LINEA(177));
+
+
+    END IF;
+    
+    -- Obtener los registros con LOOP
+    LOOP
+        FETCH c_hospital INTO v_hospital;
+        EXIT WHEN c_hospital%NOTFOUND; -- Terminar cuando no queden mas registros
+        
+        --Aumentar el numero de registro
+        v_contador := v_contador + 1;
+        --si el formato es en lista de registros
+        IF p_formato = 1 THEN
+        -- Imprimir el numero de registro
+        DBMS_OUTPUT.PUT_LINE('-----------------------------------');
+        DBMS_OUTPUT.PUT_LINE('REGISTRO ' || v_contador);
+        DBMS_OUTPUT.PUT_LINE('-----------------------------------');
+
+        -- Imprimir los datos del hospital
+        DBMS_OUTPUT.PUT_LINE('  ID Hospital: ' || v_hospital.IDHOSPITAL);
+        DBMS_OUTPUT.PUT_LINE('  Nombre: ' || v_hospital.NOMBRE);
+        DBMS_OUTPUT.PUT_LINE('  Antigüedad: ' || v_hospital.ANTIGUEDAD || ' años');
+        DBMS_OUTPUT.PUT_LINE('  Área: ' || v_hospital.AREA || ' m²');
+        DBMS_OUTPUT.PUT_LINE('  Distrito: ' || v_hospital.DISTRITO);
+        DBMS_OUTPUT.PUT_LINE('  Sede: ' || v_hospital.SEDE);
+        DBMS_OUTPUT.PUT_LINE('  Gerente: ' || v_hospital.GERENTE);
+        DBMS_OUTPUT.PUT_LINE('  Condición: ' || v_hospital.CONDICION);
+        DBMS_OUTPUT.PUT_LINE('  Fecha Registro: ' || TO_CHAR(v_hospital.FECHAREGISTRO, 'DD-MON-YYYY'));
+        DBMS_OUTPUT.PUT_LINE('');
+        END IF;
+        
+        IF p_formato = 2 THEN
+            DBMS_OUTPUT.PUT_LINE('| ' || LPAD(v_hospital.IDHOSPITAL, 4) || ' | ' || 
+                                        RPAD(v_hospital.NOMBRE, 25) || ' | ' || 
+                                        LPAD(v_hospital.ANTIGUEDAD, 5)||' años' || ' | ' || 
+                                        LPAD(v_hospital.AREA, 6)||'m²' || ' | ' || 
+                                        RPAD(v_hospital.DISTRITO, 25) || ' | ' || 
+                                        RPAD(v_hospital.SEDE, 20) || ' | ' || 
+                                        RPAD(v_hospital.GERENTE, 25) || ' | ' || 
+                                        RPAD(v_hospital.CONDICION, 20) || ' | ' || 
+                                        RPAD(TO_CHAR(v_hospital.FECHAREGISTRO, 'DD-MON-YYYY'), 12) || ' |');
+        END IF;
+    END LOOP;
+    
+    -- Si el formato es tabla
+    IF p_formato = 2 THEN
+        DBMS_OUTPUT.PUT_LINE(GENERAR_LINEA(177));
+    END IF;
+
+    -- Cerrar cursor
+    CLOSE c_hospital;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('❌ Error al listar hospitales: ' || SQLERRM);
+END SP_HOSPITAL_LISTAR;
 
 
