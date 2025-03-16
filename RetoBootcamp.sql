@@ -61,8 +61,11 @@ INSERT INTO Gerente (descGerente) VALUES ('Marcelino Paz');
 INSERT INTO Gerente (descGerente) VALUES ('Alma Salazar');
 INSERT INTO Gerente (descGerente) VALUES ('Luis Enrique Pallares');
 
-INSERT INTO Condicion (descCondicion) VALUES ('Activo');
-INSERT INTO Condicion (descCondicion) VALUES ('Inactivo');
+INSERT INTO Condicion (descCondicion) VALUES ('Operativo');  
+INSERT INTO Condicion (descCondicion) VALUES ('En Mantenimiento');  
+INSERT INTO Condicion (descCondicion) VALUES ('Cerrado Temporalmente');  
+INSERT INTO Condicion (descCondicion) VALUES ('Clausurado');  
+INSERT INTO Condicion (descCondicion) VALUES ('En Remodelación');  
 
 INSERT INTO Provincia (descProvincia) VALUES ('LIMA');
 INSERT INTO Provincia (descProvincia) VALUES ('BARRANCA');
@@ -75,9 +78,11 @@ INSERT INTO Provincia (descProvincia) VALUES ('HUAURA');
 INSERT INTO Provincia (descProvincia) VALUES ('OYON');
 INSERT INTO Provincia (descProvincia) VALUES ('YAUYOS');
 
-INSERT INTO Sede (descSede) VALUES ('Sede Central');
-INSERT INTO Sede (descSede) VALUES ('Sede Regional');
-INSERT INTO Sede (descSede) VALUES ('Sede Provincial');
+INSERT INTO Sede (descSede) VALUES ('Sede Central');  
+INSERT INTO Sede (descSede) VALUES ('Sede Regional Norte');  
+INSERT INTO Sede (descSede) VALUES ('Sede Regional Sur');  
+INSERT INTO Sede (descSede) VALUES ('Sede Provincial');  
+INSERT INTO Sede (descSede) VALUES ('Sede Metropolitana');  
 
 INSERT INTO Distrito (idProvincia, descDistrito) VALUES (1, 'ANCON');
 INSERT INTO Distrito (idProvincia, descDistrito) VALUES (1, 'ATE');
@@ -172,42 +177,54 @@ create or replace PROCEDURE SP_HOSPITAL_REGISTRAR (
     p_idCondicion IN HOSPITAL.IDCONDICION%TYPE
 ) IS
     falta_parametros EXCEPTION;
+    nombre_invalido EXCEPTION;
+    valor_negativo EXCEPTION;
     hospital_existe EXCEPTION;
     validacion EXCEPTION;
     v_errores VARCHAR2(500) := '';
     
 BEGIN
-    IF p_idHospital IS NULL OR p_idDistrito IS NULL OR p_nombre IS NULL OR
-       p_antiguedad IS NULL OR p_area IS NULL OR p_idSede IS NULL OR
-       p_idGerente IS NULL OR p_idCondicion IS NULL THEN
-        RAISE falta_parametros;
-    END IF;
-
+        -- Validar que los parametros no sean nulos
+        IF p_idHospital IS NULL OR p_idDistrito IS NULL OR p_nombre IS NULL OR
+           p_antiguedad IS NULL OR p_area IS NULL OR p_idSede IS NULL OR
+           p_idGerente IS NULL OR p_idCondicion IS NULL THEN
+            RAISE falta_parametros;
+        END IF;
+        -- Validar que el nombre del hospital no sea espacios en blanco
+        IF TRIM(p_nombre) IS NULL THEN
+            RAISE nombre_invalido;
+        END IF; 
+        -- Validar que antigüedad y área sean valores positivos
+        IF p_antiguedad < 0 OR p_area <= 0 THEN
+            RAISE valor_negativo;
+        END IF;
+        -- Verificar que no exista ya el hospital en la BD
         IF REGISTRO_EXISTE_ID('HOSPITAL', 'IDHOSPITAL', p_idHospital) = 1 THEN
             RAISE hospital_existe;
-        ELSE
-            -- Verificar la existencia de los valores referenciados
-            IF REGISTRO_EXISTE_ID('DISTRITO', 'IDDISTRITO', p_idDistrito) = 0 THEN
-                v_errores := v_errores || 'Error: El distrito con ID ' || p_idDistrito || ' no existe.' || CHR(10);
-            END IF;
+        END IF;
         
-            IF REGISTRO_EXISTE_ID('SEDE', 'IDSEDE', p_idSede) = 0 THEN
-                v_errores := v_errores || 'Error: La sede con ID ' || p_idSede || ' no existe.' || CHR(10);
-            END IF;
+        -- Verificar la existencia de los valores referenciados
+        IF REGISTRO_EXISTE_ID('DISTRITO', 'IDDISTRITO', p_idDistrito) = 0 THEN
+            v_errores := v_errores || 'Error: El distrito con ID ' || p_idDistrito || ' no existe.' || CHR(10);
+        END IF;
         
-            IF REGISTRO_EXISTE_ID('GERENTE', 'IDGERENTE', p_idGerente) = 0 THEN
-                v_errores := v_errores || 'Error: El gerente con ID ' || p_idGerente || ' no existe.' || CHR(10);
-            END IF;
+        IF REGISTRO_EXISTE_ID('SEDE', 'IDSEDE', p_idSede) = 0 THEN
+            v_errores := v_errores || 'Error: La sede con ID ' || p_idSede || ' no existe.' || CHR(10);
+        END IF;
         
-            IF REGISTRO_EXISTE_ID('CONDICION', 'IDCONDICION', p_idCondicion) = 0 THEN
-                v_errores := v_errores || 'Error: La condición con ID ' || p_idCondicion || ' no existe.' || CHR(10);
-            END IF;
+        IF REGISTRO_EXISTE_ID('GERENTE', 'IDGERENTE', p_idGerente) = 0 THEN
+            v_errores := v_errores || 'Error: El gerente con ID ' || p_idGerente || ' no existe.' || CHR(10);
+        END IF;
+        
+        IF REGISTRO_EXISTE_ID('CONDICION', 'IDCONDICION', p_idCondicion) = 0 THEN
+            v_errores := v_errores || 'Error: La condición con ID ' || p_idCondicion || ' no existe.' || CHR(10);
+        END IF;
             
-            IF v_errores IS NOT NULL THEN
-                RAISE validacion;
-            END IF;
+        IF v_errores IS NOT NULL THEN
+            RAISE validacion;
+        END IF;
 
-        -- Si todos los valores existen, insertar el nuevo registro
+        -- Si todos los valores existen, se inserta el nuevo registro
         INSERT INTO HOSPITAL (
             IDHOSPITAL, 
             IDDISTRITO, 
@@ -231,13 +248,15 @@ BEGIN
         );
         DBMS_OUTPUT.PUT_LINE('Hospital registrado exitosamente.');
 
-    END IF;
 EXCEPTION
     WHEN falta_parametros THEN
-        DBMS_OUTPUT.PUT_LINE('Faltan uno o más parametros de entrada');
-    -- Si el hospital ya existe
+        DBMS_OUTPUT.PUT_LINE('Error: Faltan uno o más parametros de entrada');
     WHEN hospital_existe THEN
-        DBMS_OUTPUT.PUT_LINE('El hospital con ID ' || p_idHospital || ' ya existe.');
+        DBMS_OUTPUT.PUT_LINE('Error: El hospital con ID ' || p_idHospital || ' ya existe.');
+    WHEN nombre_invalido THEN
+        DBMS_OUTPUT.PUT_LINE('Error: El nombre del hospital no puede estar vacío.');
+    WHEN valor_negativo THEN
+        DBMS_OUTPUT.PUT_LINE('Error: La antigüedad y el área deben ser valores positivos.');
     WHEN validacion THEN
         DBMS_OUTPUT.PUT_LINE(v_errores);
     WHEN OTHERS THEN
