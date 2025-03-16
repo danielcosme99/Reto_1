@@ -357,4 +357,44 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('Error al actualizar datos del hospital, por favor intente nuevamente.');
 END SP_HOSPITAL_ACTUALIZAR;
 
+--PROCEDURE PARA ELIMINAR UN REGISTRO DE LA TABLA HOSPITAL
+CREATE OR REPLACE PROCEDURE SP_HOSPITAL_ELIMINAR (
+    p_idHospital IN HOSPITAL.IDHOSPITAL%TYPE
+) IS
+    id_null EXCEPTION;
+    hospital_existe EXCEPTION;
+    verificar_eliminacion EXCEPTION;
+BEGIN
+    -- Validar que el ID del hospital no sea NULL
+    IF p_idHospital IS NULL THEN
+        RAISE id_null;
+    END IF;
+
+    --Verificar si el hospital existe
+    IF REGISTRO_EXISTE_ID('HOSPITAL', 'IDHOSPITAL', p_idHospital) = 0 THEN
+        RAISE hospital_existe;
+    END IF;
+
+    -- Eliminar el hospital
+    DELETE FROM HOSPITAL WHERE IDHOSPITAL = p_idHospital;
+
+    -- Verificar si se eliminó correctamente
+    IF SQL%ROWCOUNT = 0 THEN
+        RAISE verificar_eliminacion;
+    END IF;
+    DBMS_OUTPUT.PUT_LINE('✅ Hospital eliminado exitosamente.');
+
+EXCEPTION
+    WHEN id_null THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Debe proporcionar un ID de hospital.');
+    WHEN hospital_existe THEN
+        DBMS_OUTPUT.PUT_LINE('Error: El hospital con ID ' || p_idHospital || ' no existe en la Base de Datos.');
+    WHEN verificar_eliminacion THEN
+        DBMS_OUTPUT.PUT_LINE('Error: No se pudo eliminar el hospital. Vuelva a intentar.');
+    WHEN VALUE_ERROR THEN
+        DBMS_OUTPUT.PUT_LINE('Error: El ID del hospital debe ser un número.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error inesperado al eliminar el hospital: ' || SQLERRM);
+END SP_HOSPITAL_ELIMINAR;
+
 
