@@ -145,12 +145,14 @@ INSERT INTO Distrito (idProvincia, descDistrito) VALUES (10, 'TANTA');
 
 --Creacion de procedures y funciones
 -- Funcion para generar lineas
+/
 CREATE OR REPLACE FUNCTION GENERAR_LINEA(p_longitud NUMBER) RETURN VARCHAR2 IS
     v_linea VARCHAR2(4000); 
 BEGIN
     v_linea := RPAD('-', p_longitud, '-');
     RETURN v_linea;
 END GENERAR_LINEA;
+/
 --Funcion para verificar existencia de un registro
 CREATE OR REPLACE FUNCTION REGISTRO_EXISTE_ID(
     p_tabla      IN VARCHAR2,  -- Nombre de la tabla
@@ -168,12 +170,9 @@ BEGIN
 
     -- Devolvera 1 si existe, 0 si no existe
     RETURN v_count;
-EXCEPTION
-    WHEN OTHERS THEN
-        RETURN -1;  -- Error inesperado
 END REGISTRO_EXISTE_ID;
 
-
+/
 --PROCEDURE PARA REGISTRAR UN NUEVO HOSPITAL
 create or replace PROCEDURE SP_HOSPITAL_REGISTRAR (
     p_idHospital  IN HOSPITAL.IDHOSPITAL%TYPE,
@@ -193,8 +192,6 @@ create or replace PROCEDURE SP_HOSPITAL_REGISTRAR (
     v_errores VARCHAR2(500) := '';
     
 BEGIN
-        -- Habilitar salida en consola
-        DBMS_OUTPUT.ENABLE;
         -- Validar que los parametros no sean nulos
         IF p_idHospital IS NULL OR p_idDistrito IS NULL OR p_nombre IS NULL OR
            p_antiguedad IS NULL OR p_area IS NULL OR p_idSede IS NULL OR
@@ -203,7 +200,7 @@ BEGIN
         END IF;
         -- Validar que el nombre del hospital no sea espacios en blanco
         IF TRIM(p_nombre) IS NULL THEN
-            RAISE nombre_invalido;
+            RAISE nombre_invalido; 
         END IF; 
         -- Validar que antigüedad y área sean valores positivos
         IF p_antiguedad < 0 OR p_area <= 0 THEN
@@ -249,7 +246,7 @@ BEGIN
         ) VALUES (
             p_idHospital, 
             p_idDistrito, 
-            TRIM(p_nombre), 
+            TRIM(p_nombre),
             p_antiguedad, 
             p_area, 
             p_idSede, 
@@ -274,6 +271,7 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('Error al registrar el hospital, por favor intente nuevamente.');
 END SP_HOSPITAL_REGISTRAR;
 
+/
 --PROCEDURE PARA ACTUALIZAR DATOS DE UN HOSPITAL EXISTENTE
 CREATE OR REPLACE PROCEDURE SP_HOSPITAL_ACTUALIZAR (
     p_idHospital  IN HOSPITAL.IDHOSPITAL%TYPE,
@@ -294,8 +292,6 @@ CREATE OR REPLACE PROCEDURE SP_HOSPITAL_ACTUALIZAR (
     verificar_actualizacion EXCEPTION;
 
 BEGIN
-    -- Habilitar salida en consola
-    DBMS_OUTPUT.ENABLE;
     -- Validar que los parametros no sean nulos
     IF p_idHospital IS NULL OR p_idDistrito IS NULL OR p_nombre IS NULL OR
         p_antiguedad IS NULL OR p_area IS NULL OR p_idSede IS NULL OR
@@ -368,9 +364,10 @@ EXCEPTION
     WHEN verificar_actualizacion THEN
         DBMS_OUTPUT.PUT_LINE('Error: No se actualizaron los datos del hospital. Vuelva a intentar.');
     WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Error al actualizar datos del hospital, por favor intente nuevamente.');
+        DBMS_OUTPUT.PUT_LINE('Error inesperado al actualizar datos del hospital: ' || SQLERRM);
 END SP_HOSPITAL_ACTUALIZAR;
 
+/
 --PROCEDURE PARA ELIMINAR UN REGISTRO DE LA TABLA HOSPITAL
 CREATE OR REPLACE PROCEDURE SP_HOSPITAL_ELIMINAR (
     p_idHospital IN HOSPITAL.IDHOSPITAL%TYPE
@@ -379,8 +376,6 @@ CREATE OR REPLACE PROCEDURE SP_HOSPITAL_ELIMINAR (
     hospital_existe EXCEPTION;
     verificar_eliminacion EXCEPTION;
 BEGIN
-    -- Habilitar salida en consola
-    DBMS_OUTPUT.ENABLE;
     -- Validar que el ID del hospital no sea NULL
     IF p_idHospital IS NULL THEN
         RAISE id_null;
@@ -407,13 +402,11 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('Error: El hospital con ID ' || p_idHospital || ' no existe en la Base de Datos.');
     WHEN verificar_eliminacion THEN
         DBMS_OUTPUT.PUT_LINE('Error: No se pudo eliminar el hospital. Vuelva a intentar.');
-    WHEN VALUE_ERROR THEN
-        DBMS_OUTPUT.PUT_LINE('Error: El ID del hospital debe ser un número.');
     WHEN OTHERS THEN
         DBMS_OUTPUT.PUT_LINE('Error inesperado al eliminar el hospital: ' || SQLERRM);
 END SP_HOSPITAL_ELIMINAR;
 
-
+/
 --PROCEDURE PARA LISTAR LOS REGISTROS DE LA TABLA HOSPITAL
 CREATE OR REPLACE PROCEDURE SP_HOSPITAL_LISTAR(p_formato NUMBER) IS
     -- CURSOR
@@ -440,22 +433,16 @@ CREATE OR REPLACE PROCEDURE SP_HOSPITAL_LISTAR(p_formato NUMBER) IS
     v_contador NUMBER := 0;
 
 BEGIN
-    -- Habilitar salida en consola
-    DBMS_OUTPUT.ENABLE;
-
     -- Abrir cursor
     OPEN c_hospital;
     
     IF p_formato = 2 THEN
-    DBMS_OUTPUT.PUT_LINE('| ' || RPAD('ID', 4) || ' | ' || RPAD('Nombre', 25) || ' | ' ||
+    DBMS_OUTPUT.PUT_LINE('| ' || RPAD('ID', 4) || ' | ' || RPAD('Nombre', 35) || ' | ' ||
                                 RPAD('Antigüedad', 10) || ' | ' || RPAD('Área', 8) || ' | ' ||
                                 RPAD('Distrito', 25) || ' | ' || RPAD('Sede', 20) || ' | ' ||
                                 RPAD('Gerente', 25) || ' | ' || RPAD('Condición', 20) || ' | ' ||
-                                RPAD('Fecha Reg.', 12) || ' |');
-                                
-    DBMS_OUTPUT.PUT_LINE(GENERAR_LINEA(177));
-
-
+                                RPAD('Fecha Reg.', 12) || ' |');              
+    DBMS_OUTPUT.PUT_LINE(GENERAR_LINEA(187));
     END IF;
     
     -- Obtener los registros con LOOP
@@ -487,7 +474,7 @@ BEGIN
         
         IF p_formato = 2 THEN
             DBMS_OUTPUT.PUT_LINE('| ' || LPAD(v_hospital.IDHOSPITAL, 4) || ' | ' || 
-                                        RPAD(v_hospital.NOMBRE, 25) || ' | ' || 
+                                        RPAD(v_hospital.NOMBRE, 35) || ' | ' || 
                                         LPAD(v_hospital.ANTIGUEDAD, 5)||' años' || ' | ' || 
                                         LPAD(v_hospital.AREA, 6)||'m²' || ' | ' || 
                                         RPAD(v_hospital.DISTRITO, 25) || ' | ' || 
@@ -500,7 +487,7 @@ BEGIN
     
     -- Si el formato es tabla
     IF p_formato = 2 THEN
-        DBMS_OUTPUT.PUT_LINE(GENERAR_LINEA(177));
+        DBMS_OUTPUT.PUT_LINE(GENERAR_LINEA(187));
     END IF;
 
     -- Cerrar cursor
@@ -510,5 +497,4 @@ EXCEPTION
     WHEN OTHERS THEN
         DBMS_OUTPUT.PUT_LINE('❌ Error al listar hospitales: ' || SQLERRM);
 END SP_HOSPITAL_LISTAR;
-
-
+/
