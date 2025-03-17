@@ -15,7 +15,7 @@ Este repositorio contiene un conjunto de scripts en PL/SQL para la gestión de h
 
 ## 🛠 Requisitos  
 
-- **Oracle Database** (versión 11g o superior).  
+- **Oracle Database** (versión 12c o superior).  
 - **SQL*Plus, SQL Developer o cualquier cliente compatible con PL/SQL**.  
 
 ## 🚀 Instalación  
