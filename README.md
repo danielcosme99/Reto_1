@@ -4,7 +4,7 @@ Este repositorio contiene un conjunto de scripts en PL/SQL para la gestión de h
 
 ## 📋 Características  
 
-- Creación de la tabla `HOSPITAL`.
+- Creación de las tablas `HOSPITAL`,`GERENTE`,`CONDICION`,`DISTRITO`,`PROVINCIA` y `SEDE`.
 - Procedimientos almacenados para
   - Registrar un nuevo hospital.
   - Actualizar los datos de un hospital existente.
